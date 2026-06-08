@@ -109,6 +109,8 @@
       -webkit-user-drag: none;
     }
   </style>
+  <!-- 헤드에 CryptoJS 추가 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 </head>
 <body>
 
@@ -290,7 +292,8 @@
    CONFIG
 ══════════════════════════════════════════════════════ */
 const CONFIG = {
-  token  : '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',
+  encryptedToken: 'U2FsdGVkX19k0WKbX3G5rnugokELVsFQrtd7mpmeIDSRRu3vkkxQzfowUf+zzdISteYmryFdLZcEWkOTT04nxw==',
+  token  : null,
   repo   : 'friendmss/Cracker_spray_wall_problems',
   folder : 'data/images',
   adminPass: '0722'   // ← 추가
@@ -310,6 +313,8 @@ function showScreen(id) {
 ══════════════════════════════════════════════════════ */
 const TARGET_WIDTH = 1500, JPEG_QUALITY = 0.85;
 let resizedBase64 = null;
+
+CONFIG.token = CryptoJS.AES.decrypt(CONFIG.encryptedToken, CONFIG.adminPass).toString(CryptoJS.enc.Utf8);
 
 document.getElementById('imgInput').addEventListener('change', async function(e) {
   const file = e.target.files[0];
