@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>스프레이 월 문제</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+           background: #1a1a2e; color: #eee; min-height: 100vh; }
+
+    /* ── 화면 전환 ── */
+    .screen { display: none; min-height: 100vh; padding: 20px; }
+    .screen.active { display: block; }
+	#homeScreen.active { display: flex; }
+
+    /* ── 공통 ── */
+    .container { max-width: 480px; margin: 0 auto; }
+    .back-btn { background: none; border: none; color: #aaa; font-size: 1rem;
+                cursor: pointer; padding: 4px 0 16px; display: flex;
+                align-items: center; gap: 6px; }
+    .back-btn:hover { color: #eee; }
+
+    /* ── 홈 ── */
+    #homeScreen.active { display: flex; flex-direction: column;
+                     justify-content: center; align-items: center; }
+    #homeScreen h1 { font-size: 1.8rem; color: #e94560; margin-bottom: 8px; }
+    #homeScreen p  { color: #888; margin-bottom: 48px; font-size: 0.9rem; }
+    .home-btn { width: 280px; padding: 16px; margin-bottom: 14px;
+                border: none; border-radius: 12px; font-size: 1.1rem;
+                cursor: pointer; font-weight: bold; transition: opacity .2s; }
+    .home-btn:hover { opacity: 0.85; }
+    .btn-upload { background: #e94560; color: #fff; }
+    .btn-left   { background: #0f3460; color: #eee; border: 1px solid #e94560; }
+    .btn-right  { background: #0f3460; color: #eee; border: 1px solid #4caf50; }
+	.btn-admin { background: #1a1a2e; color: #aaa; border: 1px solid #555; margin-top: 8px; }
+
+    /* ── 업로드 ── */
+    .card { background: #16213e; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+    label { display: block; margin-bottom: 6px; font-size: 0.85rem; color: #aaa; }
+    input[type=text], select {
+      width: 100%; padding: 10px 14px; border-radius: 8px;
+      border: 1px solid #333; background: #0f3460; color: #eee;
+      font-size: 1rem; margin-bottom: 14px; }
+    input[type=file] {
+      width: 100%; padding: 10px 14px; border-radius: 8px;
+      border: 1px solid #333; background: #0f3460; color: #eee;
+      font-size: 1rem; margin-bottom: 14px; }
+    .img-preview { width: 100%; border-radius: 8px; margin-bottom: 14px;
+                   display: none; max-height: 260px; object-fit: cover; }
+    .img-info { font-size: 0.75rem; color: #aaa; margin-bottom: 14px; }
+    .filename-preview { font-size: 0.75rem; color: #888; margin-bottom: 14px;
+                        word-break: break-all; background: #0a0a1a;
+                        padding: 8px; border-radius: 6px; }
+    .action-btn { width: 100%; padding: 14px; background: #e94560; color: #fff;
+                  border: none; border-radius: 8px; font-size: 1rem;
+                  cursor: pointer; font-weight: bold; }
+    .action-btn:disabled { background: #444; color: #888; cursor: not-allowed; }
+    #uploadStatus { margin-top: 12px; text-align: center; font-size: 0.9rem; min-height: 20px; }
+    .success { color: #4caf50; }
+    .error   { color: #f44336; }
+
+    /* ── 게시판 ── */
+    .board-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+    .board-header h2 { font-size: 1.1rem; color: #e94560; flex: 1; }
+    .filter-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    .filter-row select { flex: 1; min-width: 100px; margin-bottom: 0; padding: 8px 10px; font-size: 0.85rem; }
+    .board-list { display: flex; flex-direction: column; gap: 10px; }
+    .board-item { background: #16213e; border-radius: 10px; padding: 14px 16px;
+                  cursor: pointer; transition: background .2s;
+                  display: flex; align-items: center; gap: 14px; }
+    .board-item:hover { background: #1e2d50; }
+    .board-thumb { width: 60px; height: 60px; border-radius: 8px;
+                   object-fit: cover; background: #0f3460; flex-shrink: 0; }
+    .board-thumb-placeholder { width: 60px; height: 60px; border-radius: 8px;
+                                background: #0f3460; flex-shrink: 0;
+                                display: flex; align-items: center; justify-content: center;
+                                font-size: 1.4rem; }
+    .board-meta { flex: 1; }
+    .board-grade { font-size: 0.8rem; color: #e94560; font-weight: bold; margin-bottom: 4px; }
+    .board-title { font-size: 1rem; font-weight: bold; margin-bottom: 4px; }
+    .board-sub   { font-size: 0.78rem; color: #888; }
+    .board-empty { text-align: center; color: #555; padding: 40px 0; }
+    .loading     { text-align: center; color: #888; padding: 40px 0; }
+
+    /* ── 이미지 뷰어 ── */
+    #viewerScreen { padding: 0; }
+    .viewer-header { background: #16213e; padding: 14px 20px;
+                     display: flex; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 10; }
+    .viewer-info { flex: 1; }
+    .viewer-grade { font-size: 0.78rem; color: #e94560; font-weight: bold; }
+    .viewer-title { font-size: 1rem; font-weight: bold; }
+    .viewer-sub   { font-size: 0.75rem; color: #888; }
+    .nav-btn { background: #0f3460; border: 1px solid #333; color: #eee;
+               padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; }
+    .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .viewer-canvas-wrap {
+      width: 100vw;
+      height: calc(100vh - 70px);
+      overflow: hidden;
+      position: relative;
+      background: #0a0a1a;
+      touch-action: none;
+    }
+    #viewerImg {
+      position: absolute;
+      transform-origin: 0 0;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ 홈 ══════════════════════════════════════════════ -->
+<div id="homeScreen" class="screen active">
+  <h1>🧗 스프레이 월</h1>
+  <p>Cracker Spray Wall Problems</p>
+  <button class="home-btn btn-upload" onclick="showScreen('uploadScreen')">➕ 문제 올리기</button>
+  <button class="home-btn btn-left"   onclick="showBoard('left')">◀ 왼쪽 벽 문제보기</button>
+  <button class="home-btn btn-right"  onclick="showBoard('right')">▶ 오른쪽 벽 문제보기</button>
+  <button class="home-btn btn-admin" onclick="showAdminLogin()">🔧 관리자 메뉴</button>
+</div>
+
+<!-- ══ 업로드 ════════════════════════════════════════════ -->
+<div id="uploadScreen" class="screen">
+  <div class="container">
+    <button class="back-btn" onclick="showScreen('homeScreen')">← 홈으로</button>
+    <div class="card">
+      <label>📸 이미지 선택</label>
+      <input type="file" id="imgInput" accept="image/*" capture="environment">
+      <img id="preview" class="img-preview">
+      <div class="img-info" id="imgInfo"></div>
+
+      <label>제목</label>
+      <input type="text" id="title" placeholder="루트 이름" oninput="updateFilename()">
+
+      <label>작성자</label>
+      <input type="text" id="author" placeholder="이름" oninput="updateFilename()">
+
+      <label>난이도</label>
+      <select id="grade" onchange="updateFilename()">
+        <option>V0</option><option>V1</option><option>V2</option>
+        <option>V3</option><option>V4</option><option>V5</option>
+        <option selected>V6</option><option>V7</option><option>V8</option>
+        <option>V9</option><option>V10</option>
+      </select>
+
+      <label>벽 종류</label>
+      <select id="wall" onchange="updateFilename()">
+        <option value="left">왼쪽 벽</option>
+        <option value="right">오른쪽 벽</option>
+      </select>
+
+      <label>벽 각도</label>
+      <select id="angle" onchange="updateFilename()">
+        <option value="0">0°</option><option value="5">5°</option>
+        <option value="10">10°</option><option value="15">15°</option>
+        <option value="20">20°</option><option value="25">25°</option>
+        <option value="30">30°</option><option value="35">35°</option>
+        <option value="40">40°</option><option value="45" selected>45°</option>
+        <option value="50">50°</option><option value="55">55°</option>
+        <option value="60">60°</option><option value="65">65°</option>
+        <option value="70">70°</option>
+      </select>
+
+      <div class="filename-preview" id="filenamePreview">💾 파일명: 제목을 입력하면 표시됩니다</div>
+      <button class="action-btn" id="saveBtn" onclick="saveRoute()">📤 저장하기</button>
+      <div id="uploadStatus"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 게시판 ════════════════════════════════════════════ -->
+<div id="boardScreen" class="screen">
+  <div class="container">
+    <div class="board-header">
+      <button class="back-btn" onclick="showScreen('homeScreen')" style="margin:0">← 홈으로</button>
+      <h2 id="boardTitle">문제 목록</h2>
+    </div>
+	<div style="margin-bottom: 12px;">
+	  <input type="text" id="searchInput"
+		placeholder="🔍 제목 또는 작성자 검색..."
+		oninput="applyFilter()"
+		style="width:100%; padding:10px 14px; border-radius:8px;
+			   border:1px solid #333; background:#0f3460; color:#eee;
+			   font-size:1rem; margin-bottom:0;">
+	</div>
+    <div class="filter-row">
+      <select id="filterGrade" onchange="applyFilter()">
+        <option value="">전체 난이도</option>
+        <option>V0</option><option>V1</option><option>V2</option>
+        <option>V3</option><option>V4</option><option>V5</option>
+        <option>V6</option><option>V7</option><option>V8</option>
+        <option>V9</option><option>V10</option>
+      </select>
+      <select id="filterAngle" onchange="applyFilter()">
+        <option value="">전체 각도</option>
+        <option value="0">0°</option><option value="5">5°</option>
+        <option value="10">10°</option><option value="15">15°</option>
+        <option value="20">20°</option><option value="25">25°</option>
+        <option value="30">30°</option><option value="35">35°</option>
+        <option value="40">40°</option><option value="45">45°</option>
+        <option value="50">50°</option><option value="55">55°</option>
+        <option value="60">60°</option><option value="65">65°</option>
+        <option value="70">70°</option>
+      </select>
+    </div>
+    <div id="boardLoading" class="loading">⏳ 불러오는 중...</div>
+    <div class="board-list" id="boardList"></div>
+  </div>
+</div>
+
+<!-- ══ 관리자 게시판 ══ -->
+<div id="adminScreen" class="screen">
+  <div class="container">
+    <div class="board-header">
+      <button class="back-btn" onclick="showScreen('homeScreen')" style="margin:0">←</button>
+      <h2 id="adminBoardTitle">🔧 관리자 · 문제 목록</h2>
+    </div>
+
+    <!-- 벽 선택 탭 -->
+    <div style="display:flex; gap:8px; margin-bottom:14px;">
+      <button id="adminTabLeft" onclick="switchAdminWall('left')"
+        style="flex:1; padding:10px; border:none; border-radius:8px;
+               cursor:pointer; font-weight:bold;
+               background:#e94560; color:#fff;">◀ 왼쪽 벽</button>
+      <button id="adminTabRight" onclick="switchAdminWall('right')"
+        style="flex:1; padding:10px; border:none; border-radius:8px;
+               cursor:pointer; font-weight:bold;
+               background:#0f3460; color:#eee;">▶ 오른쪽 벽</button>
+    </div>
+
+    <!-- 검색 + 필터 -->
+    <div style="margin-bottom:12px;">
+      <input type="text" id="adminSearchInput"
+        placeholder="🔍 제목 또는 작성자 검색..."
+        oninput="applyAdminFilter()"
+        style="width:100%; padding:10px 14px; border-radius:8px;
+               border:1px solid #333; background:#0f3460; color:#eee;
+               font-size:1rem; margin-bottom:0;">
+    </div>
+    <div class="filter-row">
+      <select id="adminFilterGrade" onchange="applyAdminFilter()">
+        <option value="">전체 난이도</option>
+        <option>V0</option><option>V1</option><option>V2</option>
+        <option>V3</option><option>V4</option><option>V5</option>
+        <option>V6</option><option>V7</option><option>V8</option>
+        <option>V9</option><option>V10</option>
+      </select>
+      <select id="adminFilterAngle" onchange="applyAdminFilter()">
+        <option value="">전체 각도</option>
+        <option value="0">0°</option><option value="5">5°</option>
+        <option value="10">10°</option><option value="15">15°</option>
+        <option value="20">20°</option><option value="25">25°</option>
+        <option value="30">30°</option><option value="35">35°</option>
+        <option value="40">40°</option><option value="45">45°</option>
+        <option value="50">50°</option><option value="55">55°</option>
+        <option value="60">60°</option><option value="65">65°</option>
+        <option value="70">70°</option>
+      </select>
+    </div>
+
+    <div id="adminLoading" class="loading" style="display:none">⏳ 불러오는 중...</div>
+    <div class="board-list" id="adminList"></div>
+  </div>
+</div>
+
+<!-- ══ 이미지 뷰어 ══════════════════════════════════════ -->
+<div id="viewerScreen" class="screen">
+  <div class="viewer-header">
+    <button class="back-btn" onclick="showScreen('boardScreen')" style="padding:0;margin:0">← 홈으로</button>
+    <div class="viewer-info">
+      <div class="viewer-grade" id="vGrade"></div>
+      <div class="viewer-title" id="vTitle"></div>
+      <div class="viewer-sub"   id="vSub"></div>
+    </div>
+    <button class="nav-btn" id="prevBtn" onclick="navigate(-1)">‹ 이전</button>
+    <button class="nav-btn" id="nextBtn" onclick="navigate(1)">다음 ›</button>
+  </div>
+  <div class="viewer-canvas-wrap" id="viewerWrap">
+    <img id="viewerImg" src="" draggable="false">
+  </div>
+</div>
+
+<canvas id="canvas" style="display:none"></canvas>
+
+<script>
+/* ══════════════════════════════════════════════════════
+   CONFIG
+══════════════════════════════════════════════════════ */
+const CONFIG = {
+  token  : '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',
+  repo   : 'friendmss/Cracker_spray_wall_problems',
+  folder : 'data/images',
+  adminPass: '0722'   // ← 추가
+};
+
+/* ══════════════════════════════════════════════════════
+   화면 전환
+══════════════════════════════════════════════════════ */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+/* ══════════════════════════════════════════════════════
+   업로드
+══════════════════════════════════════════════════════ */
+const TARGET_WIDTH = 1500, JPEG_QUALITY = 0.85;
+let resizedBase64 = null;
+
+document.getElementById('imgInput').addEventListener('change', async function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  document.getElementById('imgInfo').textContent = '⏳ 리사이즈 중...';
+  resizedBase64 = await resizeImage(file, TARGET_WIDTH, JPEG_QUALITY);
+  const preview = document.getElementById('preview');
+  preview.src = resizedBase64; preview.style.display = 'block';
+  const origKB = (file.size/1024).toFixed(0);
+  const resKB  = Math.round((resizedBase64.length*3)/4/1024);
+  document.getElementById('imgInfo').textContent = `원본: ${origKB}KB → 리사이즈: ~${resKB}KB (1500px)`;
+  updateFilename();
+});
+
+function resizeImage(file, maxWidth, quality) {
+  return new Promise(resolve => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxWidth / img.width);
+      const w = Math.round(img.width*scale), h = Math.round(img.height*scale);
+      const c = document.getElementById('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(c.toDataURL('image/jpeg', quality));
+    };
+    img.src = url;
+  });
+}
+
+function getUploadValues() {
+  return {
+    title  : document.getElementById('title').value.trim(),
+    author : document.getElementById('author').value.trim(),
+    grade  : document.getElementById('grade').value,
+    wall   : document.getElementById('wall').value,
+    angle  : document.getElementById('angle').value,
+  };
+}
+
+function updateFilename() {
+  const v = getUploadValues();
+  const t = v.title.replace(/\s+/g,'_')||'제목없음';
+  const a = v.author.replace(/\s+/g,'_')||'작성자없음';
+  const date = new Date().toISOString().slice(0,10);
+  document.getElementById('filenamePreview').textContent =
+    `💾 파일명: ${t}_${a}_${v.grade}_${v.wall}_${v.angle}deg_${date}.jpg`;
+}
+
+async function saveRoute() {
+  const btn = document.getElementById('saveBtn');
+  const status = document.getElementById('uploadStatus');
+  const v = getUploadValues();
+  if (!v.title)  { status.className='error'; status.textContent='⚠️ 제목을 입력해주세요.'; return; }
+  if (!v.author) { status.className='error'; status.textContent='⚠️ 작성자를 입력해주세요.'; return; }
+  if (!resizedBase64) { status.className='error'; status.textContent='⚠️ 이미지를 선택해주세요.'; return; }
+
+  btn.disabled = true;
+  status.className = ''; status.textContent = '업로드 중...';
+  try {
+    const date = new Date().toISOString().slice(0,10);
+    const ts   = Date.now();
+    const tSafe = v.title.replace(/\s+/g,'_');
+    const aSafe = v.author.replace(/\s+/g,'_');
+    const filename  = `${tSafe}_${aSafe}_${v.grade}_${v.wall}_${v.angle}deg_${date}_${ts}.jpg`;
+    const path      = `${CONFIG.folder}/${filename}`;
+    const wallLabel = v.wall==='left'?'왼쪽벽':'오른쪽벽';
+    const commitMsg = `Add: ${v.title} | ${v.author} | ${v.grade} | ${wallLabel} | ${v.angle}° | ${date}`;
+
+    const res = await fetch(`https://api.github.com/repos/${CONFIG.repo}/contents/${path}`, {
+      method:'PUT',
+      headers:{ 'Authorization':`token ${CONFIG.token}`, 'Content-Type':'application/json' },
+      body: JSON.stringify({ message: commitMsg, content: resizedBase64.split(',')[1] })
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.message||res.statusText); }
+
+    status.className='success'; status.textContent=`✅ 저장 완료!`;
+    document.getElementById('title').value='';
+    document.getElementById('author').value='';
+    document.getElementById('imgInput').value='';
+    document.getElementById('preview').style.display='none';
+    document.getElementById('imgInfo').textContent='';
+    document.getElementById('filenamePreview').textContent='💾 파일명: 제목을 입력하면 표시됩니다';
+    resizedBase64=null;
+    allFiles=null; // 캐시 초기화 → 다음 게시판 진입 시 재로드
+  } catch(e) {
+    status.className='error'; status.textContent=`❌ 오류: ${e.message}`;
+  }
+  btn.disabled=false;
+}
+
+/* ══════════════════════════════════════════════════════
+   게시판
+══════════════════════════════════════════════════════ */
+let allFiles      = null;  // 전체 파일 목록 캐시
+let currentWall   = 'left';
+let filteredItems = [];    // 필터링된 목록
+
+// 파일명 파싱: {제목}_{작성자}_{난이도}_{wall}_{각도}deg_{날짜}_{ts}.jpg
+function parseFilename(name) {
+  // 뒤에서부터 고정 필드 파싱
+  const noExt = name.replace(/\.jpg$/i,'');
+  const parts = noExt.split('_');
+  // 최소 7개 파트 필요
+  if (parts.length < 7) return null;
+  const ts    = parts[parts.length-1];
+  const date  = parts[parts.length-2];
+  const angle = parts[parts.length-3].replace('deg','');
+  const wall  = parts[parts.length-4];
+  const grade = parts[parts.length-5];
+  const author= parts[parts.length-6];
+  const title = parts.slice(0, parts.length-6).join(' ');
+  return { title, author, grade, wall, angle, date, ts, filename: name };
+}
+
+async function fetchFileList() {
+  if (allFiles !== null) return allFiles;
+  const url = `https://api.github.com/repos/${CONFIG.repo}/contents/${CONFIG.folder}`;
+  const res = await fetch(url, {
+    headers:{ 'Authorization':`token ${CONFIG.token}` }
+  });
+  if (!res.ok) throw new Error('파일 목록을 불러올 수 없습니다.');
+  const data = await res.json();
+  allFiles = data
+    .filter(f => f.name.endsWith('.jpg'))
+    .map(f => ({ ...parseFilename(f.name), download_url: f.download_url }))
+    .filter(f => f !== null)
+    .sort((a,b) => b.ts - a.ts); // 최신순
+  return allFiles;
+}
+
+async function showBoard(wall) {
+  currentWall = wall;
+  document.getElementById('boardTitle').textContent =
+    wall==='left' ? '◀ 왼쪽 벽 문제' : '▶ 오른쪽 벽 문제';
+  document.getElementById('filterGrade').value = '';
+  document.getElementById('filterAngle').value = '';
+  document.getElementById('searchInput').value = '';  // ← 추가
+  showScreen('boardScreen');
+
+  const loading = document.getElementById('boardLoading');
+  const list    = document.getElementById('boardList');
+  loading.style.display = 'block';
+  list.innerHTML = '';
+
+  try {
+    await fetchFileList();
+    loading.style.display = 'none';
+    applyFilter();
+  } catch(e) {
+    loading.textContent = `❌ ${e.message}`;
+  }
+}
+
+function applyFilter() {
+  const gradeF  = document.getElementById('filterGrade').value;
+  const angleF  = document.getElementById('filterAngle').value;
+  const searchQ = document.getElementById('searchInput').value.trim().toLowerCase();
+  const list    = document.getElementById('boardList');
+
+  filteredItems = (allFiles || []).filter(f =>
+    f.wall === currentWall &&
+    (!gradeF  || f.grade === gradeF) &&
+    (!angleF  || f.angle === angleF) &&
+    (!searchQ || f.title.toLowerCase().includes(searchQ)
+              || f.author.toLowerCase().includes(searchQ))
+  );
+
+  list.innerHTML = '';
+  if (filteredItems.length === 0) {
+    list.innerHTML = '<div class="board-empty">검색 결과가 없습니다</div>';
+    return;
+  }
+
+  filteredItems.forEach((item, idx) => {
+    // 검색어 하이라이트
+    const highlight = (text) => {
+      if (!searchQ) return text;
+      const regex = new RegExp(`(${searchQ})`, 'gi');
+      return text.replace(regex, '<mark style="background:#e94560;color:#fff;border-radius:3px;padding:0 2px">$1</mark>');
+    };
+
+    const el = document.createElement('div');
+    el.className = 'board-item';
+    el.innerHTML = `
+      <div class="board-thumb-placeholder">🏔</div>
+      <div class="board-meta">
+        <div class="board-grade">${item.grade} · ${item.angle}°</div>
+        <div class="board-title">${highlight(item.title)}</div>
+        <div class="board-sub">${highlight(item.author)} · ${item.date}</div>
+      </div>`;
+    el.onclick = () => openViewer(idx);
+    list.appendChild(el);
+  });
+}
+
+/* ══════════════════════════════════════════════════════
+   이미지 뷰어
+══════════════════════════════════════════════════════ */
+let currentIdx = 0;
+
+function openViewer(idx) {
+  currentIdx = idx;
+  showScreen('viewerScreen');
+  loadViewer();
+}
+
+function loadViewer() {
+  const item = filteredItems[currentIdx];
+  document.getElementById('vGrade').textContent = `${item.grade} · ${item.angle}° · ${item.wall==='left'?'왼쪽 벽':'오른쪽 벽'}`;
+  document.getElementById('vTitle').textContent = item.title;
+  document.getElementById('vSub').textContent   = `${item.author} · ${item.date}`;
+  document.getElementById('prevBtn').disabled = currentIdx === 0;
+  document.getElementById('nextBtn').disabled = currentIdx === filteredItems.length - 1;
+
+  const img = document.getElementById('viewerImg');
+  img.src = '';
+  img.src = item.download_url;
+  resetTransform();
+}
+
+function navigate(dir) {
+  const next = currentIdx + dir;
+  if (next < 0 || next >= filteredItems.length) return;
+  currentIdx = next;
+  loadViewer();
+}
+
+/* ── 핀치/드래그 줌 ── */
+let scale=1, posX=0, posY=0;
+let lastDist=0, startX=0, startY=0, isDragging=false;
+let lastScale=1, lastPosX=0, lastPosY=0;
+
+function resetTransform() {
+  scale=1; posX=0; posY=0;
+  applyTransform();
+}
+
+function applyTransform() {
+  document.getElementById('viewerImg').style.transform =
+    `translate(${posX}px, ${posY}px) scale(${scale})`;
+}
+
+const wrap = document.getElementById('viewerWrap');
+
+// 터치 (핀치 줌 + 드래그)
+wrap.addEventListener('touchstart', e => {
+  if (e.touches.length === 2) {
+    lastDist  = getDist(e.touches);
+    lastScale = scale;
+    lastPosX  = posX; lastPosY = posY;
+  } else if (e.touches.length === 1) {
+    isDragging = true;
+    startX = e.touches[0].clientX - posX;
+    startY = e.touches[0].clientY - posY;
+  }
+}, { passive: true });
+
+wrap.addEventListener('touchmove', e => {
+  if (e.touches.length === 2) {
+    e.preventDefault();
+    const dist = getDist(e.touches);
+    scale = Math.min(8, Math.max(0.5, lastScale * (dist / lastDist)));
+    applyTransform();
+  } else if (e.touches.length === 1 && isDragging) {
+    posX = e.touches[0].clientX - startX;
+    posY = e.touches[0].clientY - startY;
+    applyTransform();
+  }
+}, { passive: false });
+
+wrap.addEventListener('touchend', () => { isDragging = false; });
+
+// 마우스 드래그
+wrap.addEventListener('mousedown', e => {
+  isDragging = true;
+  startX = e.clientX - posX;
+  startY = e.clientY - posY;
+});
+wrap.addEventListener('mousemove', e => {
+  if (!isDragging) return;
+  posX = e.clientX - startX;
+  posY = e.clientY - startY;
+  applyTransform();
+});
+wrap.addEventListener('mouseup',   () => { isDragging = false; });
+wrap.addEventListener('mouseleave',() => { isDragging = false; });
+
+// 마우스 휠 줌
+wrap.addEventListener('wheel', e => {
+  e.preventDefault();
+  scale = Math.min(8, Math.max(0.5, scale * (e.deltaY < 0 ? 1.15 : 0.87)));
+  applyTransform();
+}, { passive: false });
+
+// 더블탭 리셋
+wrap.addEventListener('dblclick', resetTransform);
+
+function getDist(touches) {
+  const dx = touches[0].clientX - touches[1].clientX;
+  const dy = touches[0].clientY - touches[1].clientY;
+  return Math.sqrt(dx*dx + dy*dy);
+}
+
+/* ══════════════════════════════════════════════════════
+   관리자 로그인
+══════════════════════════════════════════════════════ */
+function showAdminLogin() {
+  document.getElementById('adminPassInput').value = '';
+  document.getElementById('adminPassError').textContent = '';
+  const modal = document.getElementById('adminModal');
+  modal.style.display = 'flex';
+  setTimeout(() => document.getElementById('adminPassInput').focus(), 100);
+}
+
+function closeAdminModal() {
+  document.getElementById('adminModal').style.display = 'none';
+}
+
+function checkAdminPass() {
+  const input = document.getElementById('adminPassInput').value;
+  if (input === CONFIG.adminPass) {
+    closeAdminModal();
+    showAdminBoard();
+  } else {
+    document.getElementById('adminPassError').textContent = '❌ 비밀번호가 틀렸습니다';
+    document.getElementById('adminPassInput').value = '';
+    document.getElementById('adminPassInput').focus();
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   관리자 게시판
+══════════════════════════════════════════════════════ */
+let adminWall = 'left';
+let adminFilteredItems = [];
+
+async function showAdminBoard() {
+  adminWall = 'left';
+  showScreen('adminScreen');
+  document.getElementById('adminSearchInput').value = '';
+  document.getElementById('adminFilterGrade').value = '';
+  document.getElementById('adminFilterAngle').value = '';
+  updateAdminTabs();
+
+  const loading = document.getElementById('adminLoading');
+  loading.style.display = 'block';
+  try {
+    await fetchFileList();
+    loading.style.display = 'none';
+    applyAdminFilter();
+  } catch(e) {
+    loading.textContent = `❌ ${e.message}`;
+  }
+}
+
+function switchAdminWall(wall) {
+  adminWall = wall;
+  updateAdminTabs();
+  applyAdminFilter();
+}
+
+function updateAdminTabs() {
+  document.getElementById('adminTabLeft').style.background
+    = adminWall === 'left' ? '#e94560' : '#0f3460';
+  document.getElementById('adminTabLeft').style.color
+    = adminWall === 'left' ? '#fff' : '#eee';
+  document.getElementById('adminTabRight').style.background
+    = adminWall === 'right' ? '#4caf50' : '#0f3460';
+  document.getElementById('adminTabRight').style.color
+    = adminWall === 'right' ? '#fff' : '#eee';
+}
+
+function applyAdminFilter() {
+  const gradeF  = document.getElementById('adminFilterGrade').value;
+  const angleF  = document.getElementById('adminFilterAngle').value;
+  const searchQ = document.getElementById('adminSearchInput').value.trim().toLowerCase();
+  const list    = document.getElementById('adminList');
+
+  adminFilteredItems = (allFiles || []).filter(f =>
+    f.wall === adminWall &&
+    (!gradeF  || f.grade === gradeF) &&
+    (!angleF  || f.angle === angleF) &&
+    (!searchQ || f.title.toLowerCase().includes(searchQ)
+              || f.author.toLowerCase().includes(searchQ))
+  );
+
+  list.innerHTML = '';
+  if (adminFilteredItems.length === 0) {
+    list.innerHTML = '<div class="board-empty">문제가 없습니다</div>';
+    return;
+  }
+
+  adminFilteredItems.forEach((item, idx) => {
+    const el = document.createElement('div');
+    el.className = 'board-item';
+    el.style.position = 'relative';
+    el.innerHTML = `
+      <div class="board-thumb-placeholder">🏔</div>
+      <div class="board-meta" style="flex:1">
+        <div class="board-grade">${item.grade} · ${item.angle}°</div>
+        <div class="board-title">${item.title}</div>
+        <div class="board-sub">${item.author} · ${item.date}</div>
+      </div>
+      <button onclick="event.stopPropagation(); confirmDelete(${idx})"
+        style="background:#c0392b; color:#fff; border:none; border-radius:8px;
+               padding:8px 12px; cursor:pointer; font-size:0.85rem;
+               font-weight:bold; flex-shrink:0;">🗑 삭제</button>`;
+    el.onclick = () => openAdminViewer(idx);
+    list.appendChild(el);
+  });
+}
+
+/* ── 삭제 확인 ── */
+function confirmDelete(idx) {
+  const item = adminFilteredItems[idx];
+  const confirmed = confirm(`정말 삭제하시겠습니까?\n\n"${item.title}" (${item.grade} · ${item.author})`);
+  if (confirmed) deleteFile(idx);
+}
+
+async function deleteFile(idx) {
+  const item = adminFilteredItems[idx];
+  const list = document.getElementById('adminList');
+
+  // 버튼 비활성화
+  const btns = list.querySelectorAll('button');
+  btns.forEach(b => b.disabled = true);
+
+  try {
+    // 파일 SHA 조회 (삭제에 필요)
+    const path = `${CONFIG.folder}/${item.filename}`;
+    const infoRes = await fetch(
+      `https://api.github.com/repos/${CONFIG.repo}/contents/${path}`,
+      { headers: { 'Authorization': `token ${CONFIG.token}` } }
+    );
+    if (!infoRes.ok) throw new Error('파일 정보를 가져올 수 없습니다.');
+    const info = await infoRes.json();
+
+    // 삭제 요청
+    const delRes = await fetch(
+      `https://api.github.com/repos/${CONFIG.repo}/contents/${path}`,
+      {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `token ${CONFIG.token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: `Delete: ${item.title} | ${item.author} | ${item.grade}`,
+          sha: info.sha
+        })
+      }
+    );
+    if (!delRes.ok) throw new Error('삭제 실패');
+
+    // 캐시에서도 제거
+    allFiles = allFiles.filter(f => f.filename !== item.filename);
+    applyAdminFilter();
+    alert(`✅ "${item.title}" 삭제 완료`);
+
+  } catch(e) {
+    alert(`❌ 삭제 오류: ${e.message}`);
+    btns.forEach(b => b.disabled = false);
+  }
+}
+
+/* ── 관리자 뷰어 (일반 뷰어 재활용) ── */
+function openAdminViewer(idx) {
+  // 관리자 필터 목록을 일반 뷰어에 임시 적용
+  filteredItems = adminFilteredItems;
+  currentIdx = idx;
+  // 뒤로가기를 adminScreen으로
+  document.querySelector('#viewerScreen .back-btn').onclick = () => showScreen('adminScreen');
+  showScreen('viewerScreen');
+  loadViewer();
+}
+
+</script>
+<!-- 관리자 로그인 모달 -->
+<div id="adminModal" style="
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,0.7); z-index:100;
+  align-items:center; justify-content:center;">
+  <div style="background:#16213e; border-radius:14px;
+              padding:28px 24px; width:300px; text-align:center;">
+    <div style="font-size:1.4rem; margin-bottom:16px;">🔧 관리자 로그인</div>
+    <input type="password" id="adminPassInput"
+      placeholder="비밀번호 입력"
+      onkeydown="if(event.key==='Enter') checkAdminPass()"
+      style="width:100%; padding:10px 14px; border-radius:8px;
+             border:1px solid #333; background:#0f3460; color:#eee;
+             font-size:1rem; margin-bottom:12px;">
+    <div id="adminPassError"
+      style="color:#f44336; font-size:0.85rem; min-height:18px; margin-bottom:12px;"></div>
+    <div style="display:flex; gap:8px;">
+      <button onclick="closeAdminModal()"
+        style="flex:1; padding:10px; background:#333; color:#eee;
+               border:none; border-radius:8px; cursor:pointer;">취소</button>
+      <button onclick="checkAdminPass()"
+        style="flex:1; padding:10px; background:#e94560; color:#fff;
+               border:none; border-radius:8px; cursor:pointer; font-weight:bold;">확인</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
